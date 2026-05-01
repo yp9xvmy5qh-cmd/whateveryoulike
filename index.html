@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notion Study Widget</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      background: transparent;
+      color: #3f342b;
+    }
+
+    .widget {
+      max-width: 520px;
+      margin: auto;
+      padding: 22px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #fff7ed, #fef3c7);
+      box-shadow: 0 12px 30px rgba(120, 80, 40, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      font-size: 22px;
+      margin: 0;
+      letter-spacing: 0.5px;
+    }
+
+    .date {
+      font-size: 13px;
+      opacity: 0.7;
+      white-space: nowrap;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 18px;
+      padding: 16px;
+      margin-top: 14px;
+    }
+
+    .label {
+      font-size: 13px;
+      opacity: 0.72;
+      margin-bottom: 6px;
+    }
+
+    .countdown-number {
+      font-size: 38px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .countdown-text {
+      margin-top: 4px;
+      font-size: 14px;
+    }
+
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 13px;
+      border-radius: 999px;
+      background: #f1d9b5;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #f59e0b, #fb7185);
+      transition: width 0.6s ease;
+    }
+
+    .mood-list {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .mood {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #fff7ed;
+      cursor: pointer;
+      font-size: 15px;
+      transition: 0.2s ease;
+    }
+
+    .mood:hover,
+    .mood.active {
+      transform: translateY(-2px);
+      background: #fed7aa;
+    }
+
+    .quote {
+      font-size: 14px;
+      line-height: 1.65;
+      margin-top: 12px;
+      opacity: 0.8;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #f1d9b5;
+      margin-top: 8px;
+      background: rgba(255,255,255,0.75);
+      color: #3f342b;
+    }
+
+    .small {
+      font-size: 12px;
+      opacity: 0.6;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget">
+    <div class="header">
+      <h1>今日讀書小宇宙 ✦</h1>
+      <div class="date" id="today"></div>
+    </div>
+
+    <div class="card">
+      <div class="label">距離目標日</div>
+      <div class="countdown-number" id="daysLeft">--</div>
+      <div class="countdown-text">日後就到目標啦，加油。</div>
+      <input type="date" id="targetDate" />
+      <div class="small">揀你嘅考試日、deadline 或重要日期。</div>
+    </div>
+
+    <div class="card">
+      <div class="progress-row">
+        <span>讀書進度</span>
+        <strong><span id="progressText">0</span>%</strong>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <input type="range" id="progressInput" min="0" max="100" value="0" />
+      <div class="small">拖拉去更新今日完成咗幾多。</div>
+    </div>
+
+    <div class="card">
+      <div class="label">今日心情</div>
+      <div class="mood-list">
+        <button class="mood">😌 平穩</button>
+        <button class="mood">🥲 有壓力</button>
+        <button class="mood">🔥 有動力</button>
+        <button class="mood">🫠 想休息</button>
+      </div>
+      <div class="quote" id="quote">慢慢嚟，穩定比完美更重要。</div>
+    </div>
+  </div>
+
+  <script>
+    const today = document.getElementById("today");
+    const daysLeft = document.getElementById("daysLeft");
+    const targetDate = document.getElementById("targetDate");
+    const progressInput = document.getElementById("progressInput");
+    const progressText = document.getElementById("progressText");
+    const progressFill = document.getElementById("progressFill");
+    const moods = document.querySelectorAll(".mood");
+    const quote = document.getElementById("quote");
+
+    const quotes = {
+      "😌 平穩": "今日保持住就已經好好。",
+      "🥲 有壓力": "壓力唔代表你做唔到，只係你在乎。",
+      "🔥 有動力": "趁住有火，做一小步都係進展。",
+      "🫠 想休息": "休息都係計劃嘅一部分，唔係偷懶。"
+    };
+
+    function formatToday() {
+      const now = new Date();
+      today.textContent = now.toLocaleDateString("zh-Hant", {
+        month: "long",
+        day: "numeric",
+        weekday: "short"
+      });
+    }
+
+    function updateCountdown() {
+      const savedDate = localStorage.getItem("notionTargetDate");
+      if (savedDate) targetDate.value = savedDate;
+
+      if (!targetDate.value) {
+        daysLeft.textContent = "--";
+        return;
+      }
+
+      const target = new Date(targetDate.value + "T00:00:00");
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+
+      const diff = target - now;
+      const day = Math.ceil(diff / (1000 * 60 * 60 * 24));
+      daysLeft.textContent = day >= 0 ? day : "已到";
+    }
+
+    function updateProgress(value) {
+      progressText.textContent = value;
+      progressFill.style.width = value + "%";
+      localStorage.setItem("notionProgress", value);
+    }
+
+    targetDate.addEventListener("change", () => {
+      localStorage.setItem("notionTargetDate", targetDate.value);
+      updateCountdown();
+    });
+
+    progressInput.addEventListener("input", (e) => {
+      updateProgress(e.target.value);
+    });
+
+    moods.forEach(button => {
+      button.addEventListener("click", () => {
+        moods.forEach(b => b.classList.remove("active"));
+        button.classList.add("active");
+        quote.textContent = quotes[button.textContent.trim()];
+        localStorage.setItem("notionMood", button.textContent.trim());
+      });
+    });
+
+    formatToday();
+    updateCountdown();
+
+    const savedProgress = localStorage.getItem("notionProgress") || 0;
+    progressInput.value = savedProgress;
+    updateProgress(savedProgress);
+
+    const savedMood = localStorage.getItem("notionMood");
+    if (savedMood) {
+      moods.forEach(button => {
+        if (button.textContent.trim() === savedMood) {
+          button.classList.add("active");
+          quote.textContent = quotes[savedMood];
+        }
+      });
+    }
+  </script>
+</body>
+</html>
